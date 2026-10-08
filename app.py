@@ -187,6 +187,7 @@ SCENARIOS_DIR = Path(__file__).resolve().parent / "data" / "scenarios"
 
 SCENARIO_CONFIGS = {
     "05_multistep_attack.json": "🔥 05: Multi-Step Attack (Internet → EC2 → Role → S3)",
+    "demo_scenario.json": "🌟 Live Demo: FinTech & E-Commerce Breach (Full Multi-Path)",
     "01_secure.json": "🛡️ 01: Secure Architecture (Isolated, No Attack Paths)",
     "02_public_ec2.json": "⚠️ 02: Public EC2 Bastion (SSH Open, Sensitive Isolated)",
     "03_excessive_iam.json": "🚨 03: Excessive IAM Permissions (Wildcard Role to RDS)",

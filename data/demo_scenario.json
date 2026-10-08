@@ -1,0 +1,149 @@
+{
+  "scenario_name": "demo_ecommerce_fintech_breach",
+  "metadata": {
+    "description": "Live Website Demo: Public Web Server to Sensitive Customer PII and Financial Ledger",
+    "environment": "production",
+    "account_id": "987654321098",
+    "region": "us-east-1"
+  },
+  "resources": [
+    {
+      "id": "res-internet",
+      "type": "internet",
+      "name": "Public Internet",
+      "public": true,
+      "sensitive": false,
+      "properties": {
+        "description": "Global external internet ingress traffic"
+      }
+    },
+    {
+      "id": "res-sg-web",
+      "type": "security_group",
+      "name": "sg-prod-web-dmz",
+      "public": true,
+      "sensitive": false,
+      "properties": {
+        "inbound_rules": [
+          {
+            "protocol": "tcp",
+            "port": 80,
+            "source": "0.0.0.0/0"
+          },
+          {
+            "protocol": "tcp",
+            "port": 443,
+            "source": "0.0.0.0/0"
+          },
+          {
+            "protocol": "tcp",
+            "port": 22,
+            "source": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "res-ec2-api",
+      "type": "ec2",
+      "name": "prod-ecommerce-api-frontend",
+      "public": true,
+      "sensitive": false,
+      "properties": {
+        "instance_type": "c5.xlarge",
+        "public_ip": "54.214.88.19",
+        "private_ip": "10.0.1.50",
+        "security_group": "res-sg-web"
+      }
+    },
+    {
+      "id": "res-role-app",
+      "type": "iam_role",
+      "name": "EC2StorefrontServiceProfileRole",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "policies": [
+          "s3:GetObject",
+          "s3:ListBucket",
+          "rds:*",
+          "secretsmanager:GetSecretValue"
+        ],
+        "assume_role_policy": "ec2.amazonaws.com"
+      }
+    },
+    {
+      "id": "res-s3-pii",
+      "type": "s3",
+      "name": "acme-fintech-customer-pii-vault",
+      "public": false,
+      "sensitive": true,
+      "properties": {
+        "encrypted": false,
+        "classification": "Customer PII, SSN, and Credit Cards",
+        "record_count": 500000
+      }
+    },
+    {
+      "id": "res-rds-ledger",
+      "type": "rds",
+      "name": "acme-core-ledger-mysql-cluster",
+      "public": false,
+      "sensitive": true,
+      "properties": {
+        "engine": "mysql",
+        "multi_az": true,
+        "encrypted": false,
+        "port": 3306
+      }
+    },
+    {
+      "id": "res-secret-master",
+      "type": "secret",
+      "name": "core-ledger-db-admin-secret",
+      "public": false,
+      "sensitive": true,
+      "properties": {
+        "secret_type": "database_credentials",
+        "associated_db": "acme-core-ledger-mysql-cluster"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "source": "res-internet",
+      "target": "res-sg-web",
+      "type": "exposes"
+    },
+    {
+      "source": "res-sg-web",
+      "target": "res-ec2-api",
+      "type": "connects_to"
+    },
+    {
+      "source": "res-ec2-api",
+      "target": "res-role-app",
+      "type": "assumes"
+    },
+    {
+      "source": "res-role-app",
+      "target": "res-s3-pii",
+      "type": "has_permission"
+    },
+    {
+      "source": "res-role-app",
+      "target": "res-s3-pii",
+      "type": "can_read"
+    },
+    {
+      "source": "res-ec2-api",
+      "target": "res-rds-ledger",
+      "type": "connects_to"
+    },
+    {
+      "source": "res-rds-ledger",
+      "target": "res-secret-master",
+      "type": "trusts"
+    }
+  ]
+}
