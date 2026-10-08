@@ -1,0 +1,143 @@
+{
+  "scenario_name": "05_multistep_attack",
+  "resources": [
+    {
+      "id": "res-internet",
+      "type": "internet",
+      "name": "public-internet",
+      "public": true,
+      "sensitive": false,
+      "properties": {
+        "description": "External global internet traffic"
+      }
+    },
+    {
+      "id": "res-sg-storefront",
+      "type": "security_group",
+      "name": "sg-public-dmz-storefront",
+      "public": true,
+      "sensitive": false,
+      "properties": {
+        "inbound_rules": [
+          {
+            "protocol": "tcp",
+            "port": 80,
+            "source": "0.0.0.0/0"
+          },
+          {
+            "protocol": "tcp",
+            "port": 443,
+            "source": "0.0.0.0/0"
+          },
+          {
+            "protocol": "tcp",
+            "port": 22,
+            "source": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "res-ec2-storefront",
+      "type": "ec2",
+      "name": "acme-ecommerce-storefront-frontend-01",
+      "public": true,
+      "sensitive": false,
+      "properties": {
+        "instance_type": "c5.xlarge",
+        "public_ip": "54.201.78.14",
+        "private_ip": "10.0.1.25",
+        "unpatched_vulnerabilities": [
+          "CVE-2021-44228"
+        ]
+      }
+    },
+    {
+      "id": "res-role-storefront",
+      "type": "iam_role",
+      "name": "StorefrontEC2InstanceProfileRole",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "policies": [
+          "s3:GetObject",
+          "s3:ListBucket",
+          "cloudwatch:PutMetricData"
+        ],
+        "assume_role_policy": "ec2.amazonaws.com"
+      }
+    },
+    {
+      "id": "res-s3-customer-data",
+      "type": "s3",
+      "name": "acme-prod-customer-data-pii-vault",
+      "public": false,
+      "sensitive": true,
+      "properties": {
+        "classification": "Customer PII & Credit Cards",
+        "encrypted": true,
+        "record_count": 250000
+      }
+    },
+    {
+      "id": "res-rds-catalog",
+      "type": "rds",
+      "name": "storefront-product-catalog-mysql",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "engine": "mysql",
+        "multi_az": true,
+        "encrypted": true
+      }
+    },
+    {
+      "id": "res-secret-catalog-db",
+      "type": "secret",
+      "name": "storefront-catalog-db-password",
+      "public": false,
+      "sensitive": true,
+      "properties": {
+        "secret_type": "database_credentials",
+        "associated_db": "storefront-product-catalog-mysql"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "source": "res-internet",
+      "target": "res-sg-storefront",
+      "type": "exposes"
+    },
+    {
+      "source": "res-sg-storefront",
+      "target": "res-ec2-storefront",
+      "type": "connects_to"
+    },
+    {
+      "source": "res-ec2-storefront",
+      "target": "res-role-storefront",
+      "type": "assumes"
+    },
+    {
+      "source": "res-role-storefront",
+      "target": "res-s3-customer-data",
+      "type": "has_permission"
+    },
+    {
+      "source": "res-role-storefront",
+      "target": "res-s3-customer-data",
+      "type": "can_read"
+    },
+    {
+      "source": "res-ec2-storefront",
+      "target": "res-rds-catalog",
+      "type": "connects_to"
+    },
+    {
+      "source": "res-rds-catalog",
+      "target": "res-secret-catalog-db",
+      "type": "trusts"
+    }
+  ]
+}

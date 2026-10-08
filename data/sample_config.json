@@ -1,0 +1,205 @@
+{
+  "metadata": {
+    "account_id": "123456789012",
+    "region": "us-east-1",
+    "scan_timestamp": "2026-10-08T06:00:00Z"
+  },
+  "resources": [
+    {
+      "id": "vpc-0a1b2c3d",
+      "type": "VPC",
+      "name": "production-vpc",
+      "properties": {
+        "cidr_block": "10.0.0.0/16"
+      }
+    },
+    {
+      "id": "igw-0a1b2c3d",
+      "type": "InternetGateway",
+      "name": "prod-igw",
+      "properties": {
+        "attached_vpc": "vpc-0a1b2c3d"
+      }
+    },
+    {
+      "id": "subnet-pub-1",
+      "type": "Subnet",
+      "name": "public-subnet-1",
+      "properties": {
+        "vpc_id": "vpc-0a1b2c3d",
+        "cidr_block": "10.0.1.0/24",
+        "public": true
+      }
+    },
+    {
+      "id": "subnet-priv-1",
+      "type": "Subnet",
+      "name": "private-subnet-1",
+      "properties": {
+        "vpc_id": "vpc-0a1b2c3d",
+        "cidr_block": "10.0.2.0/24",
+        "public": false
+      }
+    },
+    {
+      "id": "sg-web-public",
+      "type": "SecurityGroup",
+      "name": "web-server-sg",
+      "properties": {
+        "vpc_id": "vpc-0a1b2c3d",
+        "inbound_rules": [
+          {"protocol": "tcp", "port": 80, "source": "0.0.0.0/0"},
+          {"protocol": "tcp", "port": 443, "source": "0.0.0.0/0"},
+          {"protocol": "tcp", "port": 22, "source": "0.0.0.0/0"}
+        ],
+        "outbound_rules": [
+          {"protocol": "all", "port": -1, "destination": "0.0.0.0/0"}
+        ]
+      }
+    },
+    {
+      "id": "sg-db-internal",
+      "type": "SecurityGroup",
+      "name": "database-sg",
+      "properties": {
+        "vpc_id": "vpc-0a1b2c3d",
+        "inbound_rules": [
+          {"protocol": "tcp", "port": 3306, "source": "sg-web-public"},
+          {"protocol": "tcp", "port": 3306, "source": "0.0.0.0/0"}
+        ],
+        "outbound_rules": [
+          {"protocol": "all", "port": -1, "destination": "0.0.0.0/0"}
+        ]
+      }
+    },
+    {
+      "id": "i-webserver01",
+      "type": "EC2",
+      "name": "web-server-01",
+      "properties": {
+        "instance_type": "t3.medium",
+        "subnet_id": "subnet-pub-1",
+        "security_groups": ["sg-web-public"],
+        "public_ip": "54.210.99.42",
+        "iam_role": "role-web-server",
+        "state": "running"
+      }
+    },
+    {
+      "id": "i-dbserver01",
+      "type": "EC2",
+      "name": "db-server-01",
+      "properties": {
+        "instance_type": "r5.large",
+        "subnet_id": "subnet-priv-1",
+        "security_groups": ["sg-db-internal"],
+        "public_ip": null,
+        "iam_role": "role-db-admin",
+        "state": "running"
+      }
+    },
+    {
+      "id": "i-jumpbox",
+      "type": "EC2",
+      "name": "admin-jumpbox",
+      "properties": {
+        "instance_type": "t3.micro",
+        "subnet_id": "subnet-pub-1",
+        "security_groups": ["sg-web-public"],
+        "public_ip": "54.210.99.100",
+        "iam_role": "role-admin-full",
+        "state": "running"
+      }
+    },
+    {
+      "id": "role-web-server",
+      "type": "IAMRole",
+      "name": "WebServerRole",
+      "properties": {
+        "policies": ["s3-read-only", "cloudwatch-write"],
+        "trust_principal": "ec2.amazonaws.com"
+      }
+    },
+    {
+      "id": "role-db-admin",
+      "type": "IAMRole",
+      "name": "DatabaseAdminRole",
+      "properties": {
+        "policies": ["rds-full-access", "s3-full-access"],
+        "trust_principal": "ec2.amazonaws.com"
+      }
+    },
+    {
+      "id": "role-admin-full",
+      "type": "IAMRole",
+      "name": "FullAdminRole",
+      "properties": {
+        "policies": ["admin-full-access"],
+        "trust_principal": "ec2.amazonaws.com"
+      }
+    },
+    {
+      "id": "s3-app-data",
+      "type": "S3Bucket",
+      "name": "app-data-bucket",
+      "properties": {
+        "public_access": false,
+        "encryption": "AES256",
+        "versioning": true
+      }
+    },
+    {
+      "id": "s3-logs-public",
+      "type": "S3Bucket",
+      "name": "logs-public-bucket",
+      "properties": {
+        "public_access": true,
+        "encryption": "none",
+        "versioning": false
+      }
+    },
+    {
+      "id": "rds-prod-mysql",
+      "type": "RDS",
+      "name": "production-mysql",
+      "properties": {
+        "engine": "mysql",
+        "subnet_id": "subnet-priv-1",
+        "security_groups": ["sg-db-internal"],
+        "publicly_accessible": false,
+        "encrypted": true,
+        "multi_az": true
+      }
+    },
+    {
+      "id": "rds-staging",
+      "type": "RDS",
+      "name": "staging-mysql",
+      "properties": {
+        "engine": "mysql",
+        "subnet_id": "subnet-pub-1",
+        "security_groups": ["sg-web-public"],
+        "publicly_accessible": true,
+        "encrypted": false,
+        "multi_az": false
+      }
+    },
+    {
+      "id": "lambda-processor",
+      "type": "Lambda",
+      "name": "data-processor",
+      "properties": {
+        "runtime": "python3.11",
+        "iam_role": "role-db-admin",
+        "vpc_config": {
+          "subnet_ids": ["subnet-priv-1"],
+          "security_group_ids": ["sg-db-internal"]
+        },
+        "env_variables": {
+          "DB_HOST": "rds-prod-mysql.internal",
+          "DB_PASSWORD": "SuperSecret123!"
+        }
+      }
+    }
+  ]
+}

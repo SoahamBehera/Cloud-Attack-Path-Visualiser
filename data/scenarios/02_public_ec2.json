@@ -1,0 +1,98 @@
+{
+  "scenario_name": "02_public_ec2",
+  "resources": [
+    {
+      "id": "res-internet",
+      "type": "internet",
+      "name": "public-internet",
+      "public": true,
+      "sensitive": false,
+      "properties": {
+        "description": "External global internet traffic"
+      }
+    },
+    {
+      "id": "res-sg-bastion",
+      "type": "security_group",
+      "name": "sg-bastion-ssh-public",
+      "public": true,
+      "sensitive": false,
+      "properties": {
+        "inbound_rules": [
+          {
+            "protocol": "tcp",
+            "port": 22,
+            "source": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "res-ec2-bastion",
+      "type": "ec2",
+      "name": "corp-bastion-jumpbox-01",
+      "public": true,
+      "sensitive": false,
+      "properties": {
+        "instance_type": "t3.small",
+        "public_ip": "54.214.88.90",
+        "private_ip": "10.0.1.5",
+        "state": "running"
+      }
+    },
+    {
+      "id": "res-role-bastion",
+      "type": "iam_role",
+      "name": "BastionHostLimitedProfileRole",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "policies": [
+          "AmazonSSMManagedInstanceCore"
+        ],
+        "assume_role_policy": "ec2.amazonaws.com"
+      }
+    },
+    {
+      "id": "res-s3-archive",
+      "type": "s3",
+      "name": "corporate-financial-records-vault",
+      "public": false,
+      "sensitive": true,
+      "properties": {
+        "encryption": "aws:kms",
+        "block_public_access": true,
+        "bucket_lock": true
+      }
+    },
+    {
+      "id": "res-rds-payroll",
+      "type": "rds",
+      "name": "corporate-payroll-postgres-db",
+      "public": false,
+      "sensitive": true,
+      "properties": {
+        "engine": "postgres",
+        "encrypted": true,
+        "isolated": true
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "source": "res-internet",
+      "target": "res-sg-bastion",
+      "type": "exposes"
+    },
+    {
+      "source": "res-sg-bastion",
+      "target": "res-ec2-bastion",
+      "type": "connects_to"
+    },
+    {
+      "source": "res-ec2-bastion",
+      "target": "res-role-bastion",
+      "type": "assumes"
+    }
+  ]
+}

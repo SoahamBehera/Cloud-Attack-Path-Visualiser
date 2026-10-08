@@ -1,0 +1,107 @@
+{
+  "scenario_name": "04_public_s3",
+  "resources": [
+    {
+      "id": "res-internet",
+      "type": "internet",
+      "name": "public-internet",
+      "public": true,
+      "sensitive": false,
+      "properties": {
+        "description": "External global internet traffic"
+      }
+    },
+    {
+      "id": "res-s3-leaked-kyc",
+      "type": "s3",
+      "name": "acme-customer-kyc-passport-scans-prod",
+      "public": true,
+      "sensitive": true,
+      "properties": {
+        "acl": "public-read",
+        "block_public_access": false,
+        "contains_pii": true,
+        "encryption": "none"
+      }
+    },
+    {
+      "id": "res-s3-marketing-assets",
+      "type": "s3",
+      "name": "acme-static-marketing-images-cdn",
+      "public": true,
+      "sensitive": false,
+      "properties": {
+        "acl": "public-read",
+        "block_public_access": false,
+        "data_type": "Static brand logos and public icons"
+      }
+    },
+    {
+      "id": "res-iam-compliance",
+      "type": "iam_user",
+      "name": "external-compliance-auditor",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "mfa_active": true,
+        "policies": [
+          "SecurityAudit"
+        ]
+      }
+    },
+    {
+      "id": "res-ec2-marketing",
+      "type": "ec2",
+      "name": "marketing-cms-web-server",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "instance_type": "t3.medium",
+        "private_ip": "10.0.5.18"
+      }
+    },
+    {
+      "id": "res-sg-marketing",
+      "type": "security_group",
+      "name": "sg-internal-marketing-cms",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "inbound_rules": [
+          {
+            "protocol": "tcp",
+            "port": 80,
+            "source": "10.0.0.0/16"
+          }
+        ]
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "source": "res-internet",
+      "target": "res-s3-leaked-kyc",
+      "type": "exposes"
+    },
+    {
+      "source": "res-internet",
+      "target": "res-s3-leaked-kyc",
+      "type": "can_read"
+    },
+    {
+      "source": "res-internet",
+      "target": "res-s3-marketing-assets",
+      "type": "exposes"
+    },
+    {
+      "source": "res-ec2-marketing",
+      "target": "res-sg-marketing",
+      "type": "connects_to"
+    },
+    {
+      "source": "res-iam-compliance",
+      "target": "res-s3-marketing-assets",
+      "type": "can_read"
+    }
+  ]
+}

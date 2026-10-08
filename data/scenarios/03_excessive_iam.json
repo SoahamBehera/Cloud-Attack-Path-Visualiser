@@ -1,0 +1,138 @@
+{
+  "scenario_name": "03_excessive_iam",
+  "resources": [
+    {
+      "id": "res-internet",
+      "type": "internet",
+      "name": "public-internet",
+      "public": true,
+      "sensitive": false,
+      "properties": {
+        "description": "External global internet traffic"
+      }
+    },
+    {
+      "id": "res-sg-internal",
+      "type": "security_group",
+      "name": "sg-internal-ops-control",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "inbound_rules": [
+          {
+            "protocol": "tcp",
+            "port": 443,
+            "source": "10.0.0.0/8"
+          }
+        ]
+      }
+    },
+    {
+      "id": "res-ec2-ops-admin",
+      "type": "ec2",
+      "name": "ops-internal-admin-node",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "instance_type": "c6i.xlarge",
+        "private_ip": "10.0.25.10",
+        "subnet_type": "private-management"
+      }
+    },
+    {
+      "id": "res-role-superadmin",
+      "type": "iam_role",
+      "name": "LegacyOperationsSuperAdminRole",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "policies": [
+          "*"
+        ],
+        "statement": [
+          {
+            "Effect": "Allow",
+            "Action": "*",
+            "Resource": "*"
+          }
+        ]
+      }
+    },
+    {
+      "id": "res-s3-legal-docs",
+      "type": "s3",
+      "name": "acme-legal-contracts-confidential",
+      "public": false,
+      "sensitive": true,
+      "properties": {
+        "classification": "Strictly Confidential",
+        "encryption": "aws:kms"
+      }
+    },
+    {
+      "id": "res-rds-core-users",
+      "type": "rds",
+      "name": "acme-primary-users-aurora-cluster",
+      "public": false,
+      "sensitive": true,
+      "properties": {
+        "engine": "aurora-mysql",
+        "multi_az": true,
+        "encrypted": true
+      }
+    },
+    {
+      "id": "res-secret-master-api",
+      "type": "secret",
+      "name": "master-production-stripe-api-key",
+      "public": false,
+      "sensitive": true,
+      "properties": {
+        "secret_type": "payment_gateway_api_key",
+        "rotation_enabled": false
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "source": "res-internet",
+      "target": "res-ec2-ops-admin",
+      "type": "connects_to"
+    },
+    {
+      "source": "res-ec2-ops-admin",
+      "target": "res-sg-internal",
+      "type": "connects_to"
+    },
+    {
+      "source": "res-ec2-ops-admin",
+      "target": "res-role-superadmin",
+      "type": "assumes"
+    },
+    {
+      "source": "res-role-superadmin",
+      "target": "res-s3-legal-docs",
+      "type": "has_permission"
+    },
+    {
+      "source": "res-role-superadmin",
+      "target": "res-s3-legal-docs",
+      "type": "can_read"
+    },
+    {
+      "source": "res-role-superadmin",
+      "target": "res-rds-core-users",
+      "type": "has_permission"
+    },
+    {
+      "source": "res-role-superadmin",
+      "target": "res-rds-core-users",
+      "type": "can_write"
+    },
+    {
+      "source": "res-role-superadmin",
+      "target": "res-secret-master-api",
+      "type": "has_permission"
+    }
+  ]
+}

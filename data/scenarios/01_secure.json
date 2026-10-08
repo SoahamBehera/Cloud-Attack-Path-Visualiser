@@ -1,0 +1,104 @@
+{
+  "scenario_name": "01_secure",
+  "resources": [
+    {
+      "id": "res-internet",
+      "type": "internet",
+      "name": "public-internet",
+      "public": true,
+      "sensitive": false,
+      "properties": {
+        "description": "External global internet traffic"
+      }
+    },
+    {
+      "id": "res-sg-payments",
+      "type": "security_group",
+      "name": "sg-internal-payments-backend",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "vpc_id": "vpc-secure-prod",
+        "inbound_rules": [
+          {
+            "protocol": "tcp",
+            "port": 8443,
+            "source": "10.0.0.0/16"
+          }
+        ]
+      }
+    },
+    {
+      "id": "res-ec2-payments",
+      "type": "ec2",
+      "name": "payments-processing-worker-01",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "instance_type": "m5.large",
+        "private_ip": "10.0.14.33",
+        "subnet_type": "private-isolated"
+      }
+    },
+    {
+      "id": "res-role-payments",
+      "type": "iam_role",
+      "name": "PaymentsWorkerRestrictedRole",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "policies": [
+          "AWSXRayDaemonWriteAccess",
+          "CloudWatchLogsFullAccess"
+        ],
+        "assume_role_policy": "ec2.amazonaws.com"
+      }
+    },
+    {
+      "id": "res-s3-logs",
+      "type": "s3",
+      "name": "acme-payments-audit-logs-vault",
+      "public": false,
+      "sensitive": false,
+      "properties": {
+        "encryption": "aws:kms",
+        "versioning": true,
+        "block_public_access": true
+      }
+    },
+    {
+      "id": "res-rds-payments",
+      "type": "rds",
+      "name": "payments-ledger-aurora-cluster",
+      "public": false,
+      "sensitive": true,
+      "properties": {
+        "engine": "aurora-postgresql",
+        "multi_az": true,
+        "encrypted": true
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "source": "res-ec2-payments",
+      "target": "res-sg-payments",
+      "type": "connects_to"
+    },
+    {
+      "source": "res-ec2-payments",
+      "target": "res-role-payments",
+      "type": "assumes"
+    },
+    {
+      "source": "res-role-payments",
+      "target": "res-s3-logs",
+      "type": "has_permission"
+    },
+    {
+      "source": "res-ec2-payments",
+      "target": "res-rds-payments",
+      "type": "connects_to"
+    }
+  ]
+}
